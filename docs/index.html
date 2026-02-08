@@ -1,0 +1,357 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LLM Gateway - Multi-Provider Routing</title>
+    <style>
+        :root {
+            --bg-primary: #0d1117;
+            --bg-secondary: #161b22;
+            --bg-tertiary: #21262d;
+            --text-primary: #e6edf3;
+            --text-secondary: #8b949e;
+            --accent: #7ee787;
+            --accent-blue: #58a6ff;
+            --accent-orange: #d29922;
+            --accent-purple: #a371f7;
+            --border: #30363d;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            line-height: 1.6;
+        }
+
+        .container { max-width: 1200px; margin: 0 auto; padding: 0 20px; }
+
+        header {
+            background: linear-gradient(135deg, #1a1f2e 0%, #0d1117 100%);
+            border-bottom: 1px solid var(--border);
+            padding: 60px 0;
+        }
+
+        h1 { font-size: 2.8rem; margin-bottom: 15px; }
+        .subtitle { color: var(--text-secondary); font-size: 1.3rem; }
+
+        .badges { margin-top: 25px; display: flex; gap: 12px; flex-wrap: wrap; }
+        .badge {
+            padding: 6px 14px;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            font-weight: 500;
+        }
+        .badge-green { background: rgba(126, 231, 135, 0.2); color: var(--accent); }
+        .badge-blue { background: rgba(88, 166, 255, 0.2); color: var(--accent-blue); }
+        .badge-purple { background: rgba(163, 113, 247, 0.2); color: var(--accent-purple); }
+
+        section { padding: 70px 0; }
+        h2 { font-size: 1.9rem; margin-bottom: 35px; color: var(--accent); }
+
+        .flow-diagram {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 40px;
+        }
+
+        .flow {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 20px;
+            flex-wrap: wrap;
+        }
+
+        .flow-box {
+            background: var(--bg-tertiary);
+            border: 2px solid var(--border);
+            border-radius: 10px;
+            padding: 20px 25px;
+            text-align: center;
+            min-width: 120px;
+        }
+
+        .flow-box.request { border-color: var(--accent-blue); }
+        .flow-box.gateway { border-color: var(--accent); }
+        .flow-box.provider { border-color: var(--accent-purple); }
+
+        .flow-arrow { color: var(--text-secondary); font-size: 1.5rem; }
+
+        .features-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 25px;
+        }
+
+        .feature-card {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 25px;
+            transition: transform 0.2s, border-color 0.2s;
+        }
+        .feature-card:hover {
+            transform: translateY(-3px);
+            border-color: var(--accent);
+        }
+        .feature-card h3 { color: var(--accent); margin-bottom: 10px; }
+        .feature-card p { color: var(--text-secondary); }
+
+        .strategies-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+        }
+
+        .strategy-card {
+            background: var(--bg-secondary);
+            border-left: 3px solid var(--accent-blue);
+            padding: 20px;
+            border-radius: 0 8px 8px 0;
+        }
+        .strategy-card h4 { color: var(--accent-blue); margin-bottom: 8px; }
+
+        .code-block {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 25px;
+            overflow-x: auto;
+            font-family: 'Consolas', 'Monaco', monospace;
+            font-size: 0.9rem;
+            margin: 25px 0;
+        }
+
+        .keyword { color: #ff7b72; }
+        .string { color: #a5d6ff; }
+        .function { color: #d2a8ff; }
+        .comment { color: #8b949e; }
+        .class { color: #7ee787; }
+        .number { color: #79c0ff; }
+
+        .metrics-display {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 30px;
+            font-family: monospace;
+            font-size: 0.9rem;
+        }
+
+        .stats {
+            display: flex;
+            gap: 50px;
+            justify-content: center;
+            margin: 50px 0;
+            flex-wrap: wrap;
+        }
+        .stat { text-align: center; }
+        .stat-value { font-size: 2.8rem; font-weight: bold; color: var(--accent); }
+        .stat-label { color: var(--text-secondary); margin-top: 5px; }
+
+        footer {
+            background: var(--bg-secondary);
+            border-top: 1px solid var(--border);
+            padding: 35px 0;
+            text-align: center;
+            color: var(--text-secondary);
+        }
+        footer a { color: var(--accent); text-decoration: none; }
+
+        .highlight {
+            background: linear-gradient(90deg, var(--accent) 0%, var(--accent-blue) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <div class="container">
+            <h1>LLM <span class="highlight">Gateway</span></h1>
+            <p class="subtitle">Multi-provider routing with fallback, rate limiting, and caching</p>
+            <div class="badges">
+                <span class="badge badge-green">104 Tests Passing</span>
+                <span class="badge badge-blue">Async Python</span>
+                <span class="badge badge-purple">Production Ready</span>
+            </div>
+        </div>
+    </header>
+
+    <section>
+        <div class="container">
+            <h2>Request Flow</h2>
+            <div class="flow-diagram">
+                <div class="flow">
+                    <div class="flow-box request">
+                        <strong>Request</strong><br>
+                        <small>messages, model</small>
+                    </div>
+                    <span class="flow-arrow">-></span>
+                    <div class="flow-box gateway">
+                        <strong>Gateway</strong><br>
+                        <small>rate limit, cache</small>
+                    </div>
+                    <span class="flow-arrow">-></span>
+                    <div class="flow-box gateway">
+                        <strong>Router</strong><br>
+                        <small>strategy, fallback</small>
+                    </div>
+                    <span class="flow-arrow">-></span>
+                    <div class="flow-box provider">
+                        <strong>Providers</strong><br>
+                        <small>OpenAI, Anthropic</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section style="background: var(--bg-secondary);">
+        <div class="container">
+            <h2>Key Features</h2>
+            <div class="features-grid">
+                <div class="feature-card">
+                    <h3>Multi-Provider</h3>
+                    <p>Route between OpenAI, Anthropic, and custom providers. Easy to add new backends.</p>
+                </div>
+                <div class="feature-card">
+                    <h3>Auto Fallback</h3>
+                    <p>Automatic failover when providers error. Unhealthy providers are temporarily skipped.</p>
+                </div>
+                <div class="feature-card">
+                    <h3>Rate Limiting</h3>
+                    <p>Token bucket and sliding window limiters. Per-minute and per-hour limits with burst support.</p>
+                </div>
+                <div class="feature-card">
+                    <h3>Response Caching</h3>
+                    <p>LRU cache with TTL. Semantic key generation from messages, model, and temperature.</p>
+                </div>
+                <div class="feature-card">
+                    <h3>Cost Tracking</h3>
+                    <p>Track token usage and cost per provider. Optimize spend with cost-aware routing.</p>
+                </div>
+                <div class="feature-card">
+                    <h3>Metrics</h3>
+                    <p>Latency, success rate, cache hits, and more. Per-provider health tracking.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section>
+        <div class="container">
+            <h2>Routing Strategies</h2>
+            <div class="strategies-grid">
+                <div class="strategy-card">
+                    <h4>Round Robin</h4>
+                    <p>Even distribution across healthy providers</p>
+                </div>
+                <div class="strategy-card">
+                    <h4>Lowest Latency</h4>
+                    <p>Route to fastest responding provider</p>
+                </div>
+                <div class="strategy-card">
+                    <h4>Cost Optimized</h4>
+                    <p>Prefer cheapest provider per token</p>
+                </div>
+                <div class="strategy-card">
+                    <h4>Priority</h4>
+                    <p>Primary provider with fallback chain</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section style="background: var(--bg-secondary);">
+        <div class="container">
+            <h2>Quick Start</h2>
+            <div class="code-block">
+<code><span class="keyword">from</span> llm_gateway <span class="keyword">import</span> (
+    <span class="class">Gateway</span>, <span class="class">GatewayConfig</span>, <span class="class">Request</span>,
+    <span class="class">OpenAIProvider</span>, <span class="class">ProviderConfig</span>,
+    <span class="class">RateLimitConfig</span>, <span class="class">CacheConfig</span>,
+)
+
+<span class="comment"># Create gateway with rate limiting</span>
+gateway = <span class="class">Gateway</span>(
+    providers=[<span class="class">OpenAIProvider</span>(<span class="class">ProviderConfig</span>(name=<span class="string">"openai"</span>))],
+    config=<span class="class">GatewayConfig</span>(
+        rate_limit=<span class="class">RateLimitConfig</span>(requests_per_minute=<span class="number">60</span>),
+        cache=<span class="class">CacheConfig</span>(ttl_seconds=<span class="number">3600</span>),
+    ),
+)
+
+<span class="comment"># Make request</span>
+response = <span class="keyword">await</span> gateway.<span class="function">complete</span>(<span class="class">Request</span>(
+    messages=[{<span class="string">"role"</span>: <span class="string">"user"</span>, <span class="string">"content"</span>: <span class="string">"Hello!"</span>}],
+    model=<span class="string">"gpt-4"</span>,
+))
+<span class="function">print</span>(response.content)</code>
+            </div>
+        </div>
+    </section>
+
+    <section>
+        <div class="container">
+            <h2>Metrics Example</h2>
+            <div class="metrics-display">
+<pre>{
+  "total_requests": 1000,
+  "cached_requests": 250,
+  "failed_requests": 5,
+  "cache_hit_rate": 0.25,
+  "avg_latency_ms": 150.5,
+  "total_cost": 0.42,
+  "providers": {
+    "openai": {
+      "success_rate": 0.995,
+      "avg_latency_ms": 145.2,
+      "total_cost": 0.35
+    },
+    "anthropic": {
+      "success_rate": 0.99,
+      "avg_latency_ms": 160.8,
+      "total_cost": 0.07
+    }
+  }
+}</pre>
+            </div>
+        </div>
+    </section>
+
+    <section style="background: var(--bg-secondary);">
+        <div class="container">
+            <div class="stats">
+                <div class="stat">
+                    <div class="stat-value">104</div>
+                    <div class="stat-label">Tests Passing</div>
+                </div>
+                <div class="stat">
+                    <div class="stat-value">4</div>
+                    <div class="stat-label">Routing Strategies</div>
+                </div>
+                <div class="stat">
+                    <div class="stat-value">2</div>
+                    <div class="stat-label">Rate Limiter Types</div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <footer>
+        <div class="container">
+            <p>Built for production LLM applications</p>
+            <p style="margin-top: 15px;">
+                <a href="https://github.com/BabyChrist666/llm-gateway">View on GitHub</a>
+            </p>
+        </div>
+    </footer>
+</body>
+</html>
